@@ -1,0 +1,9 @@
+config:
+  aro-api:apiAuthScope: target-entity:a9b8a4f2-5a54-44c7-9fb5-cc6aa25e746b:api_access
+  aro-api:apiHostname: api.staging.aptive.tech
+  aro-api:datadogEnv: staging
+  aro-api:eksStackName: staging-eks-02
+  aro-api:officeCredentialsTableArn: arn:aws:dynamodb:us-east-1:825744923984:table/staging-01.staging-office-credentials-api-pestroutes.dynamodb_table
+  aws:profile: staging-01
+environment:
+  - staging-01

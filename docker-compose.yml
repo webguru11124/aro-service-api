@@ -1,0 +1,166 @@
+version: "3.8"
+
+networks:
+  network:
+
+volumes:
+  postgres-data:
+  grafana-storage:
+  influxdb-storage:
+
+services:
+
+  aro-nginx:
+    platform: linux/amd64
+    image: nginx:stable-alpine
+    container_name: aro-nginx
+    environment:
+      # It's the same as name of the php service
+      - PHP_ENDPOINT=aro-php
+    depends_on:
+      - aro-php
+    ports:
+      - "8080:80"
+    networks:
+      - network
+    # only the presence of index.php is needed, it's never executed: don't need the rest
+    volumes:
+      - ./public:/var/www/app/public
+      - ./.docker/nginx/nginx.conf.template:/etc/nginx/templates/default.conf.template
+
+  aro-php:
+    platform: linux/amd64
+    image: php:development
+    container_name: aro-php
+    user: root
+    build:
+      args:
+        INSTALL_XDEBUG: ${INSTALL_XDEBUG}
+        ENABLE_GRPC: ${ENABLE_GRPC}
+        COMPOSER_AUTH_TOKEN: ${COMPOSER_AUTH_TOKEN}
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    networks:
+      - network
+    volumes:
+      - ./:/var/www/app
+
+  aro-queue-worker:
+    platform: linux/amd64
+    image: php:development
+    container_name: aro-route-optimization-worker
+    networks:
+      - network
+    build:
+      args:
+        COMPOSER_AUTH_TOKEN: ${COMPOSER_AUTH_TOKEN}
+      context: .
+      dockerfile: Dockerfile
+    profiles:
+      - queue
+    env_file:
+      - .env
+    depends_on:
+      - aro-php
+    volumes:
+      - ./:/var/www/app
+    entrypoint: [ "/bin/sh" ]
+    command: [ "-c", "php artisan queue:listen sqs --queue=$${SQS_ROUTE_OPTIMIZATION_QUEUE},$${COLLECT_METRICS_QUEUE},$${SERVICE_STATS_QUEUE},$${SEND_NOTIFICATIONS_QUEUE} --timeout=600"]
+
+  aro-postgres:
+    platform: linux/amd64
+    image: postgis/postgis:14-3.3-alpine
+    container_name: aro-postgres
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - network
+
+  aro-grafana:
+    platform: linux/amd64
+    image: grafana/grafana:9.2.0
+    container_name: aro-grafana
+    ports:
+      - 3001:3000
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./.docker/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./.docker/grafana/config/grafana.ini:/etc/grafana/grafana.ini
+      - ./.docker/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./.docker/grafana/dashboards:/etc/dashboards
+    depends_on:
+      - aro-influxdb
+    networks:
+      - network
+
+  aro-influxdb:
+    platform: linux/amd64
+    image: influxdb:2.6-alpine
+    container_name: aro-influxdb
+    environment:
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: password
+      DOCKER_INFLUXDB_INIT_ORG: "Application Metrics"
+      DOCKER_INFLUXDB_INIT_BUCKET: aro_service
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: someToken12345
+      DOCKER_INFLUXDB_INIT_MODE: setup
+    ports:
+      - 8086:8086
+    volumes:
+      - influxdb-storage:/var/lib/influxdb
+    networks:
+      - network
+
+  aro-osrm:
+    image: osrm/osrm-backend:latest
+    container_name: aro-osrm
+    environment:
+      DATABASE_FILENAME: ${OSRM_DATABASE_FILENAME}
+    ports:
+      - 5000:5000
+    volumes:
+      - ./.docker/osrm:/data
+    entrypoint: /data/entrypoint.sh
+    networks:
+      - network
+
+  aro-vroom:
+    image: vroomvrp/vroom-docker:v1.13.0
+    container_name: aro-vroom
+    volumes:
+      - ./.docker/vroom/config.yml:/conf/config.yml
+    environment:
+      VROOM_ROUTER: osrm
+      ROUTING_HOST: aro-osrm
+    ports:
+      - 3000:3000
+    depends_on:
+      - aro-osrm
+    networks:
+      - network
+
+# ---- Redis Single for Local Development ----
+  redis-standalone:
+    platform: linux/amd64
+    container_name: redis-service-standalone
+    image: redis:7.0
+    command: redis-server
+    volumes:
+      - ./.docker/redis:/data
+    ports:
+      - 6379:6379
+    depends_on:
+      aro-php:
+        condition: service_started
+    networks:
+      - network

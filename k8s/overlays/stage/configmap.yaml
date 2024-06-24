@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aro-configmap
+  namespace: aro
+data:
+  APP_ENV: staging
+  APP_DEBUG: "false"
+  APP_URL: "https://api.aro.stg.goaptive.com"
+  VROOM_URL: "https://vroom.routing.tst.goaptive.com"
+  SQS_PREFIX: "https://sqs.us-east-1.amazonaws.com/825744923984/"
+  SQS_ROUTE_OPTIMIZATION_QUEUE: pulumi-replace 
+  COLLECT_METRICS_QUEUE: pulumi-replace
+  SERVICE_STATS_QUEUE: pulumi-replace
+  BUILD_REPORTS_QUEUE: pulumi-replace
+  SCHEDULE_APPOINTMENTS_QUEUE: pulumi-replace
+  SEND_NOTIFICATIONS_QUEUE: pulumi-replace
+  CACHING_QUEUE: pulumi-replace
+  PESTROUTES_URL: "https://demoawsaptivepest.pestroutes.com/api/"
+  DYNAMO_DB_OFFICE_CREDENTIALS_TABLENAME: staging-01.staging-office-credentials-api-pestroutes.dynamodb_table
+  DB_HOST: writer.postgres.rds.crm.stg.goaptive.com
+  NOTIFICATION_SERVICE_API_URL: "https://juafkzejve.execute-api.us-east-1.amazonaws.com/stage/api/v1/send-message"
+  REDIS_HOST: stage-app-reids-9a1cd19.jituzh.clustercfg.use1.cache.amazonaws.com
+  REDIS_PREFIX: "stg_aro_"
+  GOOGLEAPIS_PROJECT_ID: subtle-presence-399716
+  GOOGLEAPIS_CLIENT_EMAIL: aro-testing@subtle-presence-399716.iam.gserviceaccount.com
+  GOOGLEAPIS_CLIENT_ID: "106844703778016227682"
+  GOOGLEAPIS_CLIENT_CERT_URL: https://www.googleapis.com/robot/v1/metadata/x509/aro-testing%40subtle-presence-399716.iam.gserviceaccount.com
+  NOTIFICATION_SERVICE_SLACK_WEBHOOK_URL: https://hooks.slack.com/services/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
+  TRACKING_SERVICE_API_URL: https://wss.stg.goaptive.com/api-1

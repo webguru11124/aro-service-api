@@ -1,0 +1,38 @@
+[
+    {
+        "id": 1,
+        "name": "Central"
+    },
+    {
+        "id": 2,
+        "name": "Great Lakes"
+    },
+    {
+        "id": 3,
+        "name": "Gulf Coast"
+    },
+    {
+        "id": 4,
+        "name": "Mid-Atlantic"
+    },
+    {
+        "id": 5,
+        "name": "Midwest"
+    },
+    {
+        "id": 6,
+        "name": "Northeast"
+    },
+    {
+        "id": 7,
+        "name": "Southeast"
+    },
+    {
+        "id": 8,
+        "name": "Northwest"
+    },
+    {
+        "id": 9,
+        "name": "Southwest"
+    }
+]

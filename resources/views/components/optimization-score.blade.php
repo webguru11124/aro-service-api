@@ -1,0 +1,1 @@
+<span @if(isset($elementId)) id='{{$elementId}}' @endif @class(['badge', 'rounded-pill', 'bg-secondary' => $scoreRate0, 'bg-success' => $scoreRate3, 'bg-warning text-dark' => $scoreRate2, 'bg-danger' => $scoreRate1, "d-none" => $hidden ])>{{ $text }}@if($score > 0) {{ $score . '%' }} @else {{ '-' }} @endif</span>

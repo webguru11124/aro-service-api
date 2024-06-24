@@ -1,0 +1,132 @@
+name: Continuous Delivery
+
+on:
+  release:
+    types: [ published ]
+
+env:
+  AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+  ECR_REPOSITORY: aro
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+
+jobs:
+
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      repository_name: ${{ steps.repository.outputs.name }}
+      sha_short: ${{ steps.sha.outputs.short }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Set repository vars
+        id: repository
+        run: echo "name=${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}" >> "$GITHUB_OUTPUT"
+      -
+        name: Set sha vars
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      -
+        name: Set release version
+        id: release
+        run: echo "tag=${GITHUB_REF#refs/*/}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [ vars ]
+    runs-on: ubuntu-latest
+    outputs:
+      image: aptive/${{ needs.vars.outputs.repository_name }}:sha-${{ needs.vars.outputs.sha_short }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: aptive/${{ needs.vars.outputs.repository_name }}
+          tags: |
+            type=schedule
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=aptive/${{ needs.vars.outputs.repository_name }}:buildcache
+          cache-to: type=registry,ref=aptive/${{ needs.vars.outputs.repository_name }}:buildcache,mode=max
+          build-args: COMPOSER_AUTH_TOKEN=${{ secrets.COMPOSER_AUTH_TOKEN }}
+      - name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: aptive/${{ needs.vars.outputs.repository_name }}
+
+  deploy:
+    needs: [ vars, build ]
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://api.aro.prd.goaptive.com
+    concurrency:
+      group: ${{ github.workflow }}-production-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: syntaqx/setup-kustomize@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OPS_ECR_ROLE }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      -
+        name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      -
+        name: Tag and push Docker Image to ECR
+        id: ecr
+        run: |
+          ECR_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ needs.vars.outputs.tag }}"
+          docker pull ${{ needs.build.outputs.image }}
+          docker tag ${{ needs.build.outputs.image }} $ECR_IMAGE
+          docker push $ECR_IMAGE
+          echo "image=$ECR_IMAGE" >> "$GITHUB_OUTPUT"
+      -
+        run: |
+          echo "${{ steps.ecr.outputs.image }} is pending deploy to production"
+          echo "Currently managed by ArgoCD"
+
+  dispatch-post-technical-kpis-workflow:
+    needs: [ vars, deploy ]
+    uses: aptive-env/aro-service-api/.github/workflows/post-technical-kpis.yml@main # <-- path to the new workflow file here
+    with:
+      github-release-tag: ${{ needs.vars.outputs.tag }} # <-- supply the release tag to the job
+    secrets: inherit # <-- allow the shared workflow to use the secrets in our repository

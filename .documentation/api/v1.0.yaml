@@ -1,0 +1,2141 @@
+openapi: 3.0.0
+info:
+  version: '1.0'
+  title: Aptive Route Optimization (ARO) API
+  description: The documentation for the ARO service
+servers:
+  - description: Staging Environment
+    url: https://api.aro.stg.goaptive.com
+  - description: Production Environment
+    url: https://api.aro.prd.goaptive.com
+paths:
+  # Web
+  /:
+    get:
+      tags: [ Web ]
+      summary: Web home route for monitoring logs analytics
+      responses:
+        200:
+          description: Successful response with no content
+          content: {}
+
+  # Route Optimization
+  /api/v1/route-optimization-jobs:
+    post:
+      tags: [ 'Route Optimization', Jobs ]
+      summary: Initiate a route optimization by kicking off optimization jobs
+      requestBody:
+        description: |
+          The request body for initiating a route optimization. \
+          Field Defaults: \
+            {office_ids} <-- Array of Pestroutes office IDs to optimize routes across. Mandatory \
+            {start_date} <-- The target date to optimize the routes for (default is today date when is not provided). Optional \
+            {num_days_after_start_date} <-- Optimization date will be determined as 'start_date' (or today) + 'num_days_after_start_date'. Optional \
+            {num_days_to_optimize} <-- Optimization will be additionally performed for 'num_days_to_optimize' after 'start_date'. Optional \
+            {last_optimization_run} <-- Let ARO know that it is the last optimization run on that day. Optional \
+            {simulation_run} <-- When set to 'true' then optimization results will not be persisted. Optional \
+            {build_planned_optimization} <-- When set to 'true' then ARO build planned route. Optional \
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [office_ids]
+              type: object
+              properties:
+                office_ids:
+                  $ref: '#/components/schemas/OfficeIds'
+                start_date:
+                  type: string
+                  format: date
+                  example: '2023-05-01'
+                  default: 'Today'
+                num_days_after_start_date:
+                  type: integer
+                  example: 1
+                num_days_to_optimize:
+                  type: integer
+                  example: 5
+                last_optimization_run:
+                  type: boolean
+                  example: true
+                  default: false
+                simulation_run:
+                  type: boolean
+                  example: true
+                  default: false
+                build_planned_optimization:
+                  type: boolean
+                  example: false
+                  default: true
+      responses:
+        202:
+          description: Successfully created (initiated) route optimization jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Route optimization initiated successfully.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/optimization-score-notification-jobs:
+    post:
+      tags: [ Notifications, Jobs ]
+      summary: Initiate job to send optimization score notifications
+      requestBody:
+        description: |
+          The request body for initiating gathering stats. \
+          Field Defaults: \
+            {office_ids} <-- Array of Pestroutes office IDs to review optimization results across. Mandatory \
+            {start_date} <-- The target date to fetch the results for (default is today date when is not provided). Optional \
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [office_ids]
+              type: object
+              properties:
+                office_ids:
+                  $ref: '#/components/schemas/OfficeIds'
+                date:
+                  type: string
+                  format: date
+                  example: '2024-01-31'
+                  default: 'Today'
+      responses:
+        202:
+          description: Sending optimization score notifications initiated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Sending optimization score notifications initiated successfully.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  # Calendar
+  /api/v1/calendar/events:
+    get:
+      tags: [ Events ]
+      summary: Get a list of calendar events. When start_date and end_date are not provided then only recurring events that are close to actual date will be returned.
+      parameters:
+        - in: query
+          name: office_id
+          schema:
+            type: integer
+          description: Optional office ID to filter events
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+          description: Start date for filtering events
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
+          description: End date for filtering events
+        - in: query
+          name: search_text
+          schema:
+            type: string
+          description: Text to search in events
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number for pagination
+        - in: query
+          name: per_page
+          schema:
+            type: integer
+            default: 10
+          description: Number of items per page
+      responses:
+        200:
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                      pagination:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          per_page:
+                            type: integer
+                          current_page:
+                            type: integer
+                          total_pages:
+                            type: integer
+                  result:
+                    type: object
+                    properties:
+                      events:
+                        type: array
+                        description: list of events grouped by date
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              description: event ID
+                              type: integer
+                              example: 36
+                            office_id:
+                              description: office ID
+                              type: integer
+                              example: 10
+                            start_date:
+                              description: start date when the event appeared in calendar
+                              type: string
+                              example: '2024-01-01'
+                            end_date:
+                              description: end date when event should not be in calendar any more
+                              type: string
+                              nullable: true
+                              example: '2024-03-01'
+                            repeat_every:
+                              description: Repeat the event each N days/weeks/months/years
+                              nullable: true
+                              default: 1
+                              type: integer
+                              example: 2
+                            interval:
+                              $ref: '#/components/schemas/Interval'
+                            week_days:
+                              description: weekday
+                              nullable: true
+                              type: array
+                              items:
+                                type: string
+                                example: 'tuesday'
+                            week_num:
+                              description: number of week in month, can be 1, 2, 3, 4, 5, or -1 in meaning 'last week'
+                              type: integer
+                              nullable: true
+                              example: 1
+                            title:
+                              description: title of the event
+                              type: string
+                              example: 'Training meeting'
+                            description:
+                              description: description of the event
+                              type: string
+                              example: 'Agenda of the meeting'
+                            event_type:
+                              $ref: '#/components/schemas/EventType'
+                            start_at:
+                              description: start time of the event
+                              type: string
+                              example: '08:30:00'
+                            end_at:
+                              description: end time of the event
+                              type: string
+                              example: '09:00:00'
+                            time_zone:
+                              description: office time zone
+                              type: string
+                              example: 'America/Denver'
+                            override_id:
+                              description: ID of the override for this event
+                              type: integer
+                              nullable: true
+                              example: 1
+                            is_cancelled:
+                              description: is event cancelled
+                              type: boolean
+                              example: false
+                            service_pro_ids:
+                              description: list of service pro IDs assigned to the event
+                              type: array
+                              items:
+                                type: integer
+                                example: 1
+                            location:
+                              $ref: '#/components/schemas/CoordinateNullable'
+                            meeting_link:
+                              description: link to meeting online
+                              type: string
+                              nullable: true
+                              example: 'meet.google.com/aaa-bbb-ccc'
+                            address:
+                              $ref: '#/components/schemas/Address'
+
+        400:
+          $ref: '#/components/responses/400_bad_request_object_errors'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+    post:
+      tags: [ Events ]
+      summary: Create a new event
+      requestBody:
+        description: Fields required to create a new event
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [office_id, title, event_type, start_date, start_at, end_at, interval, end_after]
+              type: object
+              properties:
+                office_id:
+                  type: integer
+                  example: 1
+                title:
+                  type: string
+                  maxLength: 100
+                  description: Title of the event (not exceeding 100 characters)
+                  example: 'Calendar event'
+                description:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+                  description: Description of the event (not exceeding 500 characters)
+                  example: 'Office day event description'
+                event_type:
+                  $ref: '#/components/schemas/EventType'
+                start_date:
+                  type: string
+                  format: date
+                  example: '2024-01-01'
+                end_date:
+                  type: string
+                  nullable: true
+                  description: 'The final date for the event to repeat. Required if end_after = "date"'
+                  format: date
+                  example: '2024-04-30'
+                start_at:
+                  type: string
+                  format: time
+                  example: '08:00:00'
+                end_at:
+                  type: string
+                  format: time
+                  example: '08:30:00'
+                interval:
+                  $ref: '#/components/schemas/Interval'
+                week_days:
+                  type: array
+                  description: 'List of days of week when event occurs, can be used only within weekly intervals'
+                  nullable: true
+                  items:
+                    type: string
+                    example: 'monday'
+                repeat_every:
+                  description: Repeat the event each N days/weeks/months/years. Should be greater than 0
+                  default: 1
+                  type: integer
+                  example: 2
+                location_lat:
+                  type: number
+                  example: 30.1234
+                location_lng:
+                  type: number
+                  example: -40.4321
+                meeting_link:
+                  $ref: '#/components/schemas/MeetingLink'
+                address:
+                  type: string
+                  nullable: true
+                  example: 1960 Parker St
+                city:
+                  type: string
+                  nullable: true
+                  example: Stone Mountain
+                state:
+                  type: string
+                  nullable: true
+                  example: GA
+                zip:
+                  type: string
+                  nullable: true
+                  example: 30087
+                end_after:
+                  type: string
+                  enum:
+                    - date
+                    - occurrences
+                    - never
+                  example: 'date'
+                occurrences:
+                  description: 'Number of event occurrences. Required id end_after = "occurrences"'
+                  nullable: true
+                  type: integer
+                  example: 5
+                week_num:
+                  description: number of week in month, can be in range [-1, 1, 2, 3, 4, 5, 6] and be used only within monthly interval
+                  type: integer
+                  nullable: true
+                  example: 1
+      responses:
+        201:
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Event created successfully.
+                      id:
+                        type: integer
+                        example: 48
+                        description: The ID of the newly created resource
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/events/{event_id}:
+    patch:
+      tags: [ Events ]
+      summary: Update an existing event
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+          description: ID of the event to be updated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [title]
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: 'Calendar event'
+                description:
+                  type: string
+                  example: 'Office day event description'
+                location_lat:
+                  type: number
+                  example: 30.1234
+                location_lng:
+                  type: number
+                  example: -40.4321
+                address:
+                  type: string
+                  nullable: true
+                  example: 1960 Parker St
+                city:
+                  type: string
+                  nullable: true
+                  example: Stone Mountain
+                state:
+                  type: string
+                  nullable: true
+                  example: GA
+                zip:
+                  type: string
+                  nullable: true
+                  example: 30087
+      responses:
+        200:
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Event updated successfully.
+                      id:
+                        type: integer
+                        example: 48
+                        description: The ID of the updated resource
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+    delete:
+      tags: [ Events ]
+      summary: Soft delete an event from the calendar
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+          description: ID of the event to be deleted
+      responses:
+        200:
+          description: Event deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/events/{event_id}/overrides:
+    put:
+      tags: [ Events ]
+      summary: Add or update an override for an event
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+          description: ID of the event to add/update override
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [date]
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                  example: '2024-01-01'
+                start_time:
+                  type: string
+                  format: time
+                  example: '08:00:00'
+                end_time:
+                  type: string
+                  format: time
+                  example: '08:30:00'
+                title:
+                  type: string
+                  example: 'Calendar event'
+                description:
+                  type: string
+                  example: 'Office day event description'
+                is_canceled:
+                  type: boolean
+                  example: false
+                location_lat:
+                  type: number
+                  example: 30.1234
+                location_lng:
+                  type: number
+                  example: -40.4321
+                meeting_link:
+                  $ref: '#/components/schemas/MeetingLink'
+                address:
+                  type: string
+                  nullable: true
+                  example: 1960 Parker St
+                city:
+                  type: string
+                  nullable: true
+                  example: Stone Mountain
+                state:
+                  type: string
+                  nullable: true
+                  example: GA
+                zip:
+                  type: string
+                  nullable: true
+                  example: 30087
+      responses:
+        200:
+          description: Override added to event.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Override added to event.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/events/{event_id}/participants:
+    get:
+      tags: [ Events ]
+      summary: Get list of participants for an event
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+          description: ID of the event to get participants for
+      responses:
+        200:
+          description: List of participants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: List of participants retrieved.
+                      participants:
+                        type: array
+                        description: participants information
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              description: employee ID
+                              type: integer
+                              example: 36
+                            name:
+                              description: employee name
+                              type: string
+                              example: John Doe
+                            is_invited:
+                              description: is employee already invited to this event?
+                              type: boolean
+                              example: false
+                            external_id:
+                              type: string
+                              description: employee workday id
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+    put:
+      tags: [ Events ]
+      summary: Add a new participant to an event
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+          description: ID of the event to add a participant to
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [participant_ids]
+              type: object
+              properties:
+                participant_ids:
+                  type: array
+                  items:
+                    type: integer
+                  example: [111, 222, 3333]
+      responses:
+        200:
+          description: Participant(s) added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Participant(s) added successfully
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/events/{event_id}/participants/{participant_id}:
+    delete:
+      tags: [ Events ]
+      summary: Remove a participant from an event
+      parameters:
+        - in: path
+          name: event_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: participant_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Participant removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/event-types:
+    get:
+      tags: [ Events ]
+      summary: Get list of all existing event types
+      responses:
+        200:
+          description: List of event types
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: 'meeting'
+                        name:
+                          type: string
+                          example: 'Meeting'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/office/{office_id}/employees:
+    get:
+      tags: [ Calendar ]
+      summary: Get employees for an office
+      parameters:
+        - in: path
+          name: office_id
+          required: true
+          schema:
+            type: integer
+          description: ID of the office to get employees for
+      responses:
+        200:
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      employees:
+                        type: array
+                        description: employees information
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              description: employee ID
+                            name:
+                              type: string
+                              description: employee name
+                            external_id:
+                              type: string
+                              description: employee workday id
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/calendar/employees/{external_id}/avatar:
+    get:
+      tags: [ Calendar ]
+      summary: Get avatar for a employee
+      parameters:
+        - in: path
+          name: external_id
+          required: true
+          schema:
+            type: string
+          description: External ID of the employee to get avatar for
+      responses:
+        200:
+          description: Avatar retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      avatar:
+                        type: string
+                        description: Base64 encoded avatar image
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  # Tracking
+  /api/v1/service-stats:
+    post:
+      tags: [ ServiceStats, Jobs ]
+      summary: Initiate service stats gathering job
+      requestBody:
+        description: |
+          The request body for initiating gathering stats. \
+          Field Defaults: \
+            {office_ids} <-- Array of Pestroutes office IDs to optimize routes across. Mandatory \
+            {start_date} <-- The target date to gather the stats for (default is today date when is not provided). Optional \
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [office_ids]
+              type: object
+              properties:
+                office_ids:
+                  $ref: '#/components/schemas/OfficeIds'
+                date:
+                  type: string
+                  format: date
+                  example: '2023-05-01'
+                  default: 'Today'
+      responses:
+        202:
+          description: Gathering service stats initiated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Gathering service stats initiated successfully.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/tracking/fleet-routes:
+    get:
+      tags: [ FleetRoutes ]
+      summary: Retrieve fleet routes for a specific office and date
+      parameters:
+        - name: office_id
+          in: query
+          description: The ID of the office
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - name: date
+          in: query
+          description: The date for which to retrieve fleet routes
+          required: true
+          schema:
+            type: string
+            format: date
+            example: '2022-01-01'
+        - name: Cache-Control
+          in: header
+          description: Specify 'no-cache' to bypass cache
+          schema:
+            type: string
+            example: 'no-cache'
+      responses:
+        200:
+          description: Successfully retrieved fleet routes
+          headers:
+            Age:
+              description: Age of the response in seconds
+              schema:
+                type: integer
+                example: 3600
+            etag:
+              description: Entity Tag for caching purposes
+              schema:
+                type: string
+                example: 'abc123'
+            max_age:
+              description: How long the result will be cached
+              schema:
+                type: integer
+                example: 3600
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      routes:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                              description: The ID of the fleet route
+                            service_pro_id:
+                              type: integer
+                              description: The ID of the Service Pro associated with the fleet route
+                            service_pro_name:
+                              type: string
+                              description: The name of the Service Pro associated with the fleet route
+                            external_id:
+                              type: string
+                              nullable: true
+                              description: String id of employee in Workday service
+                            avatar_placement:
+                              type: object
+                              nullable: true
+                              properties:
+                                lat:
+                                  type: number
+                                  format: float
+                                  description: The latitude of the avatar placement on the map
+                                lng:
+                                  type: number
+                                  format: float
+                                  description: The longitude of the avatar placement on the map
+                            appointments:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  id:
+                                    type: integer
+                                    description: The ID of the appointment
+                                  lat:
+                                    type: number
+                                    format: float
+                                    description: The latitude of the appointment location
+                                  lng:
+                                    type: number
+                                    format: float
+                                    description: The longitude of the appointment location
+                            area:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  lat:
+                                    type: number
+                                    format: float
+                                    description: The latitude of the area vertex
+                                  lng:
+                                    type: number
+                                    format: float
+                                    description: The longitude of the area vertex
+                            statistics:
+                              type: object
+                              nullable: true
+                              properties:
+                                total_appointments:
+                                  type: integer
+                                  description: The total number of appointments
+                                total_service_time_minutes:
+                                  type: integer
+                                  description: The total service time in minutes
+                                total_drive_time_minutes:
+                                  type: integer
+                                  description: The total drive time in minutes
+                                total_drive_miles:
+                                  type: number
+                                  format: float
+                                  description: The total drive distance in miles
+                                average_drive_time_minutes:
+                                  type: integer
+                                  description: The average drive time between services in minutes
+                                average_drive_miles:
+                                  type: number
+                                  format: float
+                                  description: The average drive distance between services in miles
+                            actual_stats:
+                              type: object
+                              nullable: true
+                              properties:
+                                total_appointments:
+                                  type: integer
+                                  nullable: true
+                                  description: The total number of appointments serviced by Service Pro
+                                total_service_time_minutes:
+                                  type: integer
+                                  nullable: true
+                                  description: The total service time in minutes
+                                total_drive_time_minutes:
+                                  type: integer
+                                  description: The total drive time in minutes
+                                total_drive_miles:
+                                  type: number
+                                  format: float
+                                  description: The total drive distance in miles
+                                average_drive_time_minutes:
+                                  type: integer
+                                  description: The average drive time between services in minutes
+                                average_drive_miles:
+                                  type: number
+                                  format: float
+                                  description: The average drive distance between services in miles
+                                route_adherence:
+                                  type: number
+                                  format: float
+                                  nullable: true
+                                  description: The route adherence metric
+                                at_risk:
+                                  type: boolean
+                                  description: true if route considered as 'at risk'
+                                  example: true
+                                completion_percentage:
+                                  type: integer
+                                  description: Percentage of route completion
+                                  example: 75
+                            tracking_data:
+                              type: object
+                              nullable: true
+                              properties:
+                                driver_location:
+                                  $ref: '#/components/schemas/TrackingData'
+                                vehicle_location:
+                                  $ref: '#/components/schemas/TrackingData'
+                                vehicle_speed:
+                                  type: number
+                                  format: float
+                                  description: The speed of the vehicle in miles per hour
+                            geometry:
+                              type: string
+                              nullable: true
+                              description: The encoded geometry of the route
+                              example: 'enc:}~eF~q@'
+                      summary:
+                        type: object
+                        properties:
+                          total_routes:
+                            type: integer
+                            description: The total number of routes
+                          total_appointments:
+                            type: integer
+                            description: The total number of appointments across all routes
+                          total_drive_time_minutes:
+                            type: integer
+                            description: The total drive time in minutes across all routes
+                          total_drive_miles:
+                            type: number
+                            format: float
+                            description: The total drive distance in miles across all routes
+                          total_service_time_minutes:
+                            type: integer
+                            description: The total service time in minutes across all routes
+                          appointments_per_gallon:
+                            type: number
+                            format: float
+                            description: The average number of appointments that can be conducted per gallon of fuel consumed across all routes
+                          total_routes_actual:
+                            type: integer
+                            description: The total number of routes
+                          total_appointments_actual:
+                            type: integer
+                            description: The total number of appointments across all routes serviced by Service Pro
+                          total_drive_time_minutes_actual:
+                            type: integer
+                            description: The total drive time in minutes across all routes based on driving data
+                          total_drive_miles_actual:
+                            type: number
+                            format: float
+                            description: The total drive distance in miles across all routes based on driving data
+                          total_service_time_minutes_actual:
+                            type: integer
+                            description: The total service time in minutes across all routes based on driving data
+                          appointments_per_gallon_actual:
+                            type: number
+                            format: float
+                            description: The average number of appointments that can be conducted per gallon of fuel consumed across all routes based on driving data
+
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/tracking/offices:
+    get:
+      tags: [ Offices ]
+      summary: Get a list of all offices
+      responses:
+        200:
+          description: A list of offices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Office'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/tracking/regions:
+    get:
+      tags: [ Regions, Offices ]
+      summary: Get a list of regions with offices
+      responses:
+        200:
+          description: A list of regions with offices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Region'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  # Scheduling
+  /api/v1/scheduling/schedule-appointments-jobs:
+    post:
+      tags: [ Scheduling, Jobs ]
+      summary: Create a new appointment scheduling job
+      requestBody:
+        description: "The request body for creating a new appointment scheduling job.
+          Field Defaults:
+            {office_ids} <-- Array of Pestroutes office IDs to schedule appointments. Mandatory
+            {start_date} <-- The target date to schedule appointments for (default is today date when is not provided). Optional
+            {num_days_after_start_date} <-- Date for scheduling will be determined as 'start_date' (or today) + 'num_days_after_start_date'. Optional
+            {num_days_to_schedule} <-- Number of days to run scheduling for. Can be from 1 up to 14. Optional
+            {run_subsequent_optimization} <-- When set to true then optimization will be executed right after scheduling, if target date is 9+ days out from today. Optional"
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [office_ids]
+              type: object
+              properties:
+                office_ids:
+                  $ref: '#/components/schemas/OfficeIds'
+                start_date:
+                  type: string
+                  format: date
+                run_subsequent_optimization:
+                  type: boolean
+                  example: true
+                  default: false
+                num_days_after_start_date:
+                  type: integer
+                  example: 1
+                num_days_to_schedule:
+                  type: integer
+                  example: 7
+                  default: 1
+      responses:
+        202:
+          description: Successfully created a new appointment scheduling job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Successfully created a new appointment scheduling job.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/scheduling/available-spots:
+    get:
+      tags:
+        - Spots
+      summary: Get available spots
+      description: "Finds available spots to use for scheduling appointments in PestRoutes.
+          This endpoint requires several parameters in order to handle the filtering logic on the back end.
+          The default _distance_threshold_ value is 5,
+          meaning the distance from the previous spot on the route to the customer address OR from the customer address to the next spot on the route must be <= 5 miles.
+          You can optionally pass in a _distance_threshold_ value to override this limitation,
+          but this will affect the efficacy of the route and should therefore only be done within ARO or RPS guidelines for the specified office."
+      parameters:
+        - name: office_id
+          in: query
+          description: PestRoutes Office ID
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: integer
+        - name: lat
+          in: query
+          description: Customer latitude coordinates
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: number
+        - name: lng
+          in: query
+          description: Customer longitude coordinates
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: number
+        - name: is_initial
+          in: query
+          description: 1 = scheduling for an Initial Service, 0 = scheduling for a standard service
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: "Format: YYYY-MM-DD. Optional: the default _start_date_ is current date + 1 day"
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: string
+        - name: end_date
+          in: query
+          description: "Format: YYYY-MM-DD. Optional: the default _end_date_ is current date + 14 days (including all days)"
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: string
+        - name: distance_threshold
+          in: query
+          description: "Distance threshold from customer coordinates to coordinates of adjacent appointments, in miles.
+            Optional: the default _distance_threshold_ is 5 miles."
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: Limits the response per day/window pair. The default response will include all available spots.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: List of spots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                  result:
+                    type: object
+                    properties:
+                      spots:
+                        type: array
+                        description: list of spots ordered by date and window
+                        items:
+                          type: object
+                          properties:
+                            spot_id:
+                              description: spot ID
+                              type: integer
+                              example: 1343412
+                            date:
+                              description: spot date
+                              type: string
+                              example: '2023-10-02'
+                            window:
+                              description: spot window (AM or PM)
+                              type: string
+                              example: 'AM'
+                            is_aro_spot:
+                              description: shows if spot is blocked by ARO
+                              type: boolean
+                              example: false
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/scheduling/appointments:
+    post:
+      tags:
+        - Appointments
+      summary: Create appointment
+      description: "Create an appointment for a customer linked to a specified spot ID.
+        This endpoint will unblock spots that have been blocked for ARO recommendations before creating the appointment in PestRoutes.
+        No Reservation token is required, since spot reservations are not being made with the _/api/v1/scheduling/available-spots_ endpoint.
+        In the rare case that an appointment can’t be created because a spot is no longer available,
+        try another recommended spot from the _/api/v1/scheduling/available-spots_ response."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - appointment_type
+                - customer_id
+                - is_aro_spot
+                - office_id
+                - requesting_source
+                - spot_id
+                - subscription_id
+                - window
+              type: object
+              properties:
+                office_id:
+                  type: integer
+                  description: The pestroutes office ID
+                  example: 52
+                customer_id:
+                  type: integer
+                  description: The pestroutes customer ID
+                  example: 2819295
+                spot_id:
+                  type: integer
+                  description: The pestroutes spotID
+                  example: 81083028
+                subscription_id:
+                  type: integer
+                  description: The customer’s subscription ID
+                  example: 2898865
+                appointment_type:
+                  type: integer
+                  description: "An ID that corresponds to the appropriate appointment type in PestRoutes.
+                    0 = Reservice
+                    1 = Initial Service
+                    2 = Quarterly Service
+                    3 = Basic
+                    4 = Pro
+                    5 = Pro Plus
+                    6 = Premium"
+                  example: 1
+                  enum:
+                    - 0
+                    - 1
+                    - 2
+                    - 3
+                    - 4
+                    - 5
+                    - 6
+                is_aro_spot:
+                  type: integer
+                  description: "This value is provided in the _/api/v1/scheduling/available-spots_ response.
+                      Can only be 0 for a Bucket Route spot or 1 for an ARO recommended spot"
+                  example: 0
+                  enum:
+                    - 0
+                    - 1
+                window:
+                  type: string
+                  description: "This value is provided in the _/api/v1/scheduling/available-spots_ response
+                      and specifies the time window for the appointment.
+                      Can only be \"AM\" or \"PM\"."
+                  example: AM
+                  enum:
+                    - AM
+                    - PM
+                requesting_source:
+                  type: string
+                  description: "This is the shorthand code (reference below) for the service requesting to create an appointment.
+                      \"CXP\" = Customer Portal
+                      \"IVR\" = Flex IVR
+                      \"SCO\" = Self Checkout
+                      \"SMS\" = Flex SMS
+                      \"MKT\" = Marketing Partner
+                      \"TEST\" = Test"
+                  example: TEST
+                  enum:
+                    - CXP
+                    - IVR
+                    - SCO
+                    - SMS
+                    - MKT
+                    - TEST
+                execution_sid:
+                  type: string
+                  description: Twilio executionSID. This is only required for logging purposes if the call is made from Twilio Flex
+                  example: FN203249082347092384
+                notes:
+                  type: string
+                  description: Optional additional notes to be appended to the appointment. The notes field is initially populated with the source of the request (e.g., "Scheduled via [requestingSource]"). Any notes provided here will be added to the end of this pre-populated text.
+                  example: Notes from the IVR
+      responses:
+        201:
+          description: Appointment created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Appointment created.
+                      id:
+                        type: integer
+                        example: 48
+                        description: The ID of the newly created resource
+                      execution_sid:
+                        type: string
+                        example: FN203249082347092384
+                        description: Twilio executionSID
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        422:
+          $ref: '#/components/responses/422_unprocessable'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/scheduling/appointments/{appointment_id}:
+    put:
+      tags:
+        - Appointments
+      summary: Reschedule appointment
+      parameters:
+        - in: path
+          name: appointment_id
+          required: true
+          schema:
+            type: integer
+      description: "Cancels an existing appointment and creates a new appointment for a customer linked to a specified spot ID."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              required:
+                - current_appt_type
+                - customer_id
+                - is_aro_spot
+                - office_id
+                - requesting_source
+                - spot_id
+                - subscription_id
+                - window
+              type: object
+              properties:
+                office_id:
+                  type: integer
+                  description: The pestroutes office ID
+                  example: 52
+                customer_id:
+                  type: integer
+                  description: The pestroutes customer ID
+                  example: 2819295
+                spot_id:
+                  type: integer
+                  description: The pestroutes spotID
+                  example: 81083028
+                subscription_id:
+                  type: integer
+                  description: The customer’s subscription ID
+                  example: 2898865
+                current_appt_type:
+                  type: integer
+                  description: "The type of the customer’s current appointment
+                    3 = Reservice
+                    2 = Initial Service
+                    21 = Quarterly Service
+                    1799 = Basic
+                    2827 = Pro
+                    1800 = Pro Plus
+                    2828 = Premium"
+                  example: 1
+                  enum:
+                    - 3
+                    - 2
+                    - 21
+                    - 1799
+                    - 2827
+                    - 1800
+                    - 2828
+                is_aro_spot:
+                  type: integer
+                  description: "This value is provided in the _/api/v1/scheduling/available-spots_ response.
+                      Can only be 0 for a Bucket Route spot or 1 for an ARO recommended spot"
+                  example: 0
+                  enum:
+                    - 0
+                    - 1
+                window:
+                  type: string
+                  description: "This value is provided in the _/api/v1/scheduling/available-spots_ response
+                      and specifies the time window for the appointment.
+                      Can only be \"AM\" or \"PM\"."
+                  example: AM
+                  enum:
+                    - AM
+                    - PM
+                requesting_source:
+                  type: string
+                  description: "This is the shorthand code (reference below) for the service requesting to create an appointment.
+                      \"CXP\" = Customer Portal
+                      \"IVR\" = Flex IVR
+                      \"SCO\" = Self Checkout
+                      \"SMS\" = Flex SMS
+                      \"MKT\" = Marketing Partner
+                      \"TEST\" = Test"
+                  example: TEST
+                  enum:
+                    - CXP
+                    - IVR
+                    - SCO
+                    - SMS
+                    - MKT
+                    - TEST
+                execution_sid:
+                  type: string
+                  description: Twilio executionSID. This is only required for logging purposes if the call is made from Twilio Flex
+                  example: FN203249082347092384
+      responses:
+        200:
+          description: Appointment rescheduled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Appointment rescheduled.
+                      id:
+                        type: integer
+                        example: 48
+                        description: The ID of the newly created resource
+                      execution_sid:
+                        type: string
+                        example: FN203249082347092384
+                        description: Twilio executionSID
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        404:
+          $ref: '#/components/responses/404_not_found'
+        422:
+          $ref: '#/components/responses/422_unprocessable'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  /api/v1/scheduling/route-creation-jobs:
+    post:
+      tags: [ 'Route Creation', Jobs ]
+      summary: Initiate route creation job
+      requestBody:
+        description: |
+          The request body for route creation job. \
+          Field Defaults: \
+            {office_ids} <-- Array of Pestroutes office IDs to create routes for. Mandatory \
+            {start_date} <-- The target date to create routes for (default is today date when is not provided). Optional \
+            {num_days_after_start_date} <-- Date for route creation will be determined as 'start_date' (or today) + 'num_days_after_start_date'. Optional \
+            {num_days_to_create_routes} <-- Route will be additionally created for 'num_days_to_create_routes' after 'start_date'. Optional \
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [office_ids]
+              type: object
+              properties:
+                office_ids:
+                  $ref: '#/components/schemas/OfficeIds'
+                start_date:
+                  type: string
+                  format: date
+                num_days_after_start_date:
+                  type: integer
+                  example: 1
+                num_days_to_create_routes:
+                  type: integer
+                  example: 7
+                  default: 1
+      responses:
+        202:
+          description: Route creation job initiated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Route creation job initiated successfully.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  # Reporting
+  /api/v1/reports/financial-report-jobs:
+    post:
+      tags: [ 'Financial Report', Jobs ]
+      summary: Initiate updating financial report
+      requestBody:
+        description: |
+          The request body for financial report update. \
+          Field Defaults: \
+            {year} <-- The target year to get report for (default is current year when is not provided). Optional \
+            {month} <-- The target month to get report for (default is current month when is not provided). Optional \
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                year:
+                  type: integer
+                  description: The year to get report for
+                  example: 2023
+                month:
+                  type: string
+                  enum:
+                    - 'Jan'
+                    - 'Feb'
+                    - 'Mar'
+                    - 'Apr'
+                    - 'May'
+                    - 'Jun'
+                    - 'Jul'
+                    - 'Aug'
+                    - 'Sep'
+                    - 'Oct'
+                    - 'Nov'
+                    - 'Dec'
+                  example: 'Jan'
+      responses:
+        202:
+          description: Updating financial report initiated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Updating financial report initiated successfully.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  # Webhooks
+  /api/v1/webhooks/customer-property-details:
+    put:
+      tags: [ Webhooks ]
+      summary: Trigger the webhook to save customer property details
+      requestBody:
+        description: This endpoint provides an idempotent solution to update \
+          customer property details in ARO. To ensure the system operates with the most current data, \
+          it implements a soft-delete mechanism for the previous record before adding a new one with the updated details.
+        required: true
+        content:
+          application/json:
+            schema:
+              required: [ customer_id, land_sqft, building_sqft, living_sqft]
+              type: object
+              properties:
+                customer_id:
+                  type: integer
+                  example: 1
+                land_sqft:
+                  type: number
+                  format: float
+                  example: 156.68
+                building_sqft:
+                  type: number
+                  format: float
+                  example: 1676.68
+                living_sqft:
+                  type: number
+                  format: float
+                  example: 1456.66
+      responses:
+        200:
+          description: Notification about webhook is triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Webhook triggered successfully.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+  # Caching
+  /api/v1/caching/available-spots-cache:
+    put:
+      tags: [ Caching, Jobs ]
+      summary: Initiate job to refresh available spots cache
+      parameters:
+        - name: Cache-Control
+          in: header
+          description: Specify 'no-cache' to bypass cache
+          schema:
+            type: string
+            example: 'no-cache'
+      requestBody:
+        description: |
+          The request body for initiating gathering stats. \
+          Field Defaults: \
+            {office_ids} <-- Array of Pestroutes office IDs (if not provided all active offices will be processed). Optional \
+            {start_date} <-- Start date to cache spots for (default is tomorrow when is not provided). Optional \
+            {end_date} <-- End date to cache spots for (default is +14 days after start_date when is not provided). Optional \
+            {ttl} <-- Time to live for the cache in seconds (default is 300 when is not provided). Optional \
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                office_ids:
+                  type: array
+                  nullable: true
+                  items:
+                    type: integer
+                  example: [ 1, 2, 3, 4 ]
+                start_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  example: '2023-05-01'
+                  default: 'Tomorrow'
+                end_date:
+                  type: string
+                  format: date
+                  nullable: true
+                  example: '2023-05-15'
+                  default: '14 days after start_date'
+                ttl:
+                  type: integer
+                  nullable: true
+                  example: 300
+                  default: 300
+      responses:
+        202:
+          description: Available spots cache refresh initiated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  _metadata:
+                    $ref: '#/components/schemas/SuccessResult'
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Available spots cache refresh initiated.
+        400:
+          $ref: '#/components/responses/400_bad_request'
+        500:
+          $ref: '#/components/responses/500_internal_server_error'
+
+components:
+
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: Api-Key
+
+  schemas:
+    Office:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        region:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        timezone:
+          type: string
+        timezone_name:
+          type: string
+        location:
+          $ref: '#/components/schemas/Coordinate'
+
+    Region:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        offices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Office'
+        boundary:
+          type: array
+          items:
+            $ref: '#/components/schemas/Coordinate'
+
+    Coordinate:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+
+    CoordinateNullable:
+      type: object
+      nullable: true
+      properties:
+        lat:
+          type: number
+          format: float
+        lng:
+          type: number
+          format: float
+
+    TrackingData:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: float
+          description: The latitude of the tracking data point
+        lng:
+          type: number
+          format: float
+          description: The longitude of the tracking data point
+        timestamp:
+          type: string
+          format: date-time
+          description: The timestamp of the tracking data point
+
+    Address:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        city:
+          type: number
+          nullable: true
+        state:
+          type: number
+          nullable: true
+        zip:
+          type: number
+          nullable: true
+
+    Interval:
+      type: string
+      description: 'Interval of the event schedule'
+      enum:
+        - once
+        - daily
+        - weekly
+        - monthly
+        - monthly-on-day
+        - yearly
+
+    MeetingLink:
+      type: string
+      description: Link to meeting online (not exceeding 200 characters and following the format meet.google.com/aaa-bbbb-ccc)
+      nullable: true
+      maxLength: 200
+      pattern: '^(https?:\/\/)?meet\.google\.com\/[a-z0-9-]+$'
+      example: 'meet.google.com/aaa-bbb-ccc'
+
+    EventType:
+      type: string
+      enum:
+        - meeting
+        - office-event
+        - team-building
+        - training-event
+        - vehicle-maintenance
+        - other
+      description: Type of event.
+      example: 'meeting'
+
+    SuccessResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    OfficeIds:
+      type: array
+      items:
+        type: integer
+      example: [1, 2, 3, 4]
+
+  responses:
+    400_bad_request:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              _metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+              result:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Request validation error
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        detail:
+                          type: string
+                    example: [
+                      { detail: Some description of a validation error },
+                      { detail: Some other description of a validation error }
+                    ]
+
+
+    400_bad_request_object_errors:
+      description: Validation error with object-based details
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              _metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+              result:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Request validation error
+                  errors:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          detail:
+                            type: string
+                    example:
+                      field_name:
+                        - { detail: Specific detail of a validation error for field_name }
+                      another_field:
+                        - { detail: Specific detail of a validation error for another_field }
+
+
+    401_unauthorized:
+      description: Authentication Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              _metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+              result:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Authentication Failed. Api-Key was invalid.
+
+    404_not_found:
+      description: Not found error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              _metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+              result:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Office with the following ID(s) does not exist: 99'
+
+    422_unprocessable:
+      description: Unprocessable entity
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              _metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+              result:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: 'Response unsuccessful: Spot 86581374 is directly occupied by appointment 27276700.'
+
+    500_internal_server_error:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              _metadata:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+              result:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: An error was encountered while attempting to process the request. Please contact the System Administrator.
