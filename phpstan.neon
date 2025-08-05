@@ -1,0 +1,18 @@
+includes:
+    - ./vendor/nunomaduro/larastan/extension.neon
+
+parameters:
+    treatPhpDocTypesAsCertain: false
+    checkGenericClassInNonGenericObjectType: false
+    paths:
+        - app/
+    excludePaths:
+        # Temporary excluded. Should be removed after implementation of App\Models\User class
+        - 'app/Application/Providers/RouteServiceProvider.php'
+        - 'app/Infrastructure/Instrumentation/Datadog/Instrument.php'
+        - 'app/Infrastructure/Logging/Taps/WithDataDogContext.php'
+        - 'app/View'
+
+    # Level 9 is the highest level
+    level: 6
+

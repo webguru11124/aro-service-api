@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aro-configmap
+  namespace: aro
+data:
+    APP_NAME: "ARO Service"
+    QUEUE_CONNECTION: sqs
+    DB_CONNECTION: pgsql
+    DB_PORT: "5432"
+    DB_DATABASE: aptive
+    DB_USERNAME: sa_aro_service
+    LOG_CHANNEL: cloud
+    INFLUXDB_HOST: https://us-east-1-1.aws.cloud2.influxdata.com/
+    INFLUXDB_ORGANIZATION: "Application Metrics"
+    INFLUXDB_BUCKET: aro_metrics
+    DD_TRACE_CLI_ENABLED: "1"
+    CACHE_DRIVER: redis_cluster
+    REDIS_PASSWORD: null
+    REDIS_PORT: "6379"
+    REDIS_CLIENT: "phpredis"
+    REDIS_CLUSTER_ENABLED: "true"
+    
+
+  

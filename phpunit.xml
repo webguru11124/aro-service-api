@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.2/phpunit.xsd"
+    bootstrap="vendor/autoload.php"
+    colors="true"
+    cacheDirectory=".phpunit.cache">
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>./tests/Integration</directory>
+        </testsuite>
+        <!-- TODO: Uncomment when we have Service Tests -->
+        <!-- <testsuite name="Service">
+            <directory>./tests/Service</directory>
+        </testsuite> -->
+    </testsuites>
+    <coverage/>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_DRIVER" value="array"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <ini name="memory_limit" value="512M" />
+    </php>
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+        <exclude>
+            <directory>./app/Application/Http/Web</directory>
+            <directory>./app/Application/Providers</directory>
+            <directory>./app/Infrastructure/Logging</directory>
+            <directory>./app/Infrastructure/Instrumentation</directory>
+            <directory>./app/View</directory>
+        </exclude>
+    </source>
+</phpunit>

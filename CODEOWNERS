@@ -1,0 +1,5 @@
+* @aptive-env/aro-service
+
+# IaC
+/pulumi @aptive-env/devops
+/k8s @aptive-env/devops

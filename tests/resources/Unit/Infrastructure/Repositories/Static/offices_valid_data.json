@@ -1,0 +1,42 @@
+[
+    {
+        "officeID": "1",
+        "officeName": "Atlanta",
+        "region": "Southeast",
+        "licenseNumber": "100312",
+        "contactNumber": "7706852847",
+        "contactEmail": "customersupport@goaptive.com",
+        "website": "https:\/\/www.goaptive.com",
+        "timeZone": "America\/New_York",
+        "address": "1960 Parker Ct Suite B",
+        "city": "Stone Mountain",
+        "state": "GA",
+        "zip": "30087",
+        "invoiceAddress": "PO Box 736025",
+        "invoiceCity": "Dallas",
+        "invoiceState": "TX",
+        "invoiceZip": "75373-6025",
+        "location": [38.8838675559221, -77.44309016300716],
+        "cautionStatements": "<p>{{officeName}} is committed to the safety of our customers and our environment. All materials used by {{officeName}} have been registered by the Environmental Protection Agency. <strong>***PLEASE&nbsp;AVOID&nbsp;UNNECESSARY&nbsp;CONTACT&nbsp;WITH&nbsp;MATERIALS, STAY&nbsp;OFF&nbsp;TREATED&nbsp;AREAS&nbsp;UNTIL&nbsp;DRY,&nbsp; and comply with all instructions and recommendations from our technicians***<\/strong> Thanks for your patronage! National Emergency Poison Control: (800)222-1222<br> <br><\/p><p>To be compliant we have added these required statements which shall serve as a&nbsp;Summary of Precautionary Statements from Georgia Structural Pest Control Commission<br>Guidance Document dated July 2, 2009:<\/p><p><br><\/p><p> 1. Contact Treated Area(s) - Do not allow unprotected persons, children, or pets to<br> touch, enter, or replace items or bedding, to contact or enter treated area(s) until dry.<br> 2. Ventilation \/ Reoccupying - Vacate and keep area(s) closed up to 30 minutes after<br> treatment, then ventilate area(s) for up to 2 hours before reoccupying.<br> 3. Equipment \/ Processing \/ Food -Thoroughly wash dishes, utensils, food preparation\/<br> processing equipment and surfaces with an effective cleansing compound and rinse<br> with clean water, if not removed or covered during a treatment. The area should be<br> odor free before food products are placed in the area.<br> 4. Exterior Applications (baits) - Do not allow grazing of feed, lawn, or sod clippings<br> to livestock after bait applications.<br> 5. Do not burn treated firewood for 1 month after treatment.&nbsp;<\/p><hr><p><strong>Physical Office Location<\/strong><br><\/p><p>1960 Parker Ct, STE&nbsp;B, Stone Mountain, CA 30087<\/p>"
+    },
+    {
+        "officeID": "11",
+        "officeName": "Fort Lauderdale",
+        "region": "Southeast",
+        "licenseNumber": "JB243655",
+        "contactNumber": "5613492847",
+        "contactEmail": "customersupport@goaptive.com",
+        "website": "https:\/\/www.goaptive.com\/",
+        "timeZone": "America\/New_York",
+        "address": "11860 W State Rd 84 Suite B13",
+        "city": "Davie",
+        "state": "FL",
+        "zip": "33325",
+        "invoiceAddress": "PO Box 736025",
+        "invoiceCity": "Dallas",
+        "invoiceState": "TX",
+        "invoiceZip": "75373-6025",
+        "location": [26.111176955276644, -80.30678798650136],
+        "cautionStatements": "<p>{{officeName}} is committed to the safety of our customers and our environment. All materials used by {{officeName}} have been registered by the Environmental Protection Agency. <strong>***PLEASE&nbsp;AVOID&nbsp;UNNECESSARY&nbsp;CONTACT&nbsp;WITH&nbsp;MATERIALS, STAY&nbsp;OFF&nbsp;TREATED&nbsp;AREAS&nbsp;UNTIL&nbsp;DRY,&nbsp; and comply with all instructions and recommendations from our technicians***<\/strong> Thanks for your patronage! National Emergency Poison Control: (800)222-1222<\/p><hr><p><strong>Physical Office Location&nbsp;<\/strong><br><\/p><p>11860 W State Rd 84, STE&nbsp;B13, Davie, FL 33325<\/p><p><\/p>"
+    }
+]

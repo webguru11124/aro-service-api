@@ -1,0 +1,3 @@
+[submodule "db-schema-crm"]
+	path = db-schema-crm
+	url = git@github.com:aptive-env/db-schema-crm.git

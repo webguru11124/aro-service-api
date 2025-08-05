@@ -1,0 +1,16 @@
+{
+    "flags": {
+        "isAddExtraWorkEventsEnabled": true,
+        "isAppointmentSchedulingForOfficeEnabled": false,
+        "isDayBeforeServiceOptimizationEnabled": false,
+        "isDisplayOptimizationScoreInRouteSummaryEnabled": false,
+        "isExpectServiceTimeWindowAdjustmentEnabled": false,
+        "isPersistOptimizationDataByDurationEnabled": true,
+        "isPestroutesSkipBuildEnabled": false,
+        "isRestrictServiceProTimeAvailabilityEnabled": false,
+        "isSendOptimizationFailureNotificationEnabled": false,
+        "isSetAppointmentEstimatedDurationEnabled": true,
+        "isStaticTimeWindowForAppointmentsEnabled": false,
+        "whichRouteOptimizationEngineForOfficeIsSelected": "Vroom"
+    }
+}

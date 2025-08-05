@@ -1,0 +1,189 @@
+name: Continuous Deployment
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: "0 11 * * *" # 11:00 Daily
+  workflow_dispatch:
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+
+env:
+  AWS_DEFAULT_REGION: ${{ vars.AWS_DEFAULT_REGION }}
+  ECR_REPOSITORY: aro
+
+jobs:
+
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      repository: ${{ steps.build.outputs.repository }}
+      repository_name: ${{ steps.repository.outputs.name }}
+      sha_short: ${{ steps.sha.outputs.short }}
+    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Set repository vars
+        id: repository
+        run: echo "name=${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}" >> "$GITHUB_OUTPUT"
+      -
+        name: Set build vars
+        id: build
+        run: echo "repository=aptive/${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}" >> "$GITHUB_OUTPUT"
+      -
+        name: Set sha vars
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [ vars ]
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ needs.vars.outputs.repository }}:sha-${{ needs.vars.outputs.sha_short }}
+    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ needs.vars.outputs.repository }}
+          tags: |
+            type=schedule
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ needs.vars.outputs.repository }}:buildcache
+          cache-to: type=registry,ref=${{ needs.vars.outputs.repository }}:buildcache,mode=max
+          build-args: COMPOSER_AUTH_TOKEN=${{ secrets.COMPOSER_AUTH_TOKEN }}
+      -
+        name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ needs.vars.outputs.repository }}
+
+  deploy:
+    needs: [ vars, build ]
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://api.aro.stg.goaptive.com
+    concurrency:
+      group: ${{ github.workflow }}-staging-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: syntaqx/setup-kustomize@v1
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      -
+        name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OPS_ECR_ROLE }}
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+      -
+        name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      -
+        name: Tag and push Docker Image to ECR
+        id: ecr
+        run: |
+          ECR_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:staging-${{ needs.vars.outputs.sha_short }}"
+          docker pull ${{ needs.build.outputs.image }}
+          docker tag ${{ needs.build.outputs.image }} $ECR_IMAGE
+          docker push $ECR_IMAGE
+          echo "image=$ECR_IMAGE" >> "$GITHUB_OUTPUT"
+      -
+        run: |
+          echo "${{ steps.ecr.outputs.image }} is pending deploy to staging"
+          echo "Currently managed by ArgoCD"
+
+  pulumi-deploy:
+    needs: [ vars, deploy ]
+    name: Pulumi Deploy
+    environment: staging
+    runs-on: ubuntu-latest
+    defaults:
+        run:
+          working-directory: ./pulumi
+    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Install pulumi
+        uses: pulumi/actions@v5
+      -
+        name: Setup Node LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ./pulumi
+      -
+        name: Install dependencies
+        run: npm install
+      -
+        name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PULUMI_AWS_ROLE }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+      -
+        name: Setup kubectl
+        run: |
+          mkdir ${HOME}/.kube
+          echo ${{ secrets.KUBE_CONFIG }} | base64 -d > ${HOME}/.kube/config
+      -
+        name: Deploy
+        env:
+            PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+            IMAGE_TAG: staging-${{ needs.vars.outputs.sha_short }}
+        run: |
+          pulumi stack select aptive/aro-api/${{ vars.PULUMI_STACK }}
+          pulumi config rm aws:profile
+          pulumi up --yes
+
+  publish-api-docs:
+    name: Publish API Documentation
+    uses: aptive-env/devops/.github/workflows/redoc.yml@main
+    secrets: inherit
+    permissions:
+      contents: write
+    with:
+      path: ./.documentation/api/v1.0.yaml
+      validate: false
+      update: true

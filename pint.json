@@ -1,0 +1,52 @@
+{
+    "preset": "per",
+    "rules": {
+        "no_trailing_comma_in_singleline": true,
+        "no_whitespace_before_comma_in_array": true,
+        "trim_array_spaces": true,
+        "whitespace_after_comma_in_array": true,
+        "trailing_comma_in_multiline": true,
+        "magic_constant_casing": true,
+        "cast_spaces": true,
+        "class_attributes_separation": {
+            "elements": {
+                "method": "one"
+            }
+        },
+        "yoda_style": {
+            "equal": false,
+            "identical": false,
+            "less_and_greater": false
+        },
+        "type_declaration_spaces": {
+            "elements": ["function", "property"]
+        },
+        "nullable_type_declaration": {"syntax": "union"},
+        "object_operator_without_whitespace": true,
+        "operator_linebreak": true,
+        "concat_space": {"spacing":  "one"},
+        "binary_operator_spaces": true,
+        "declare_strict_types": true,
+        "single_quote": true,
+        "blank_line_before_statement": true,
+        "no_extra_blank_lines": true,
+        "no_spaces_around_offset": true,
+        "types_spaces": true,
+
+        "php_unit_data_provider_static": true,
+        "php_unit_method_casing": {"case": "snake_case"},
+        "php_unit_set_up_tear_down_visibility": true,
+        "php_unit_test_annotation": {"style": "annotation"},
+        "function_declaration": {
+            "closure_fn_spacing": "one",
+            "closure_function_spacing": "one"
+        },
+        "single_line_empty_body": false,
+        "phpdoc_separation": {"groups": [["return", "throws"]]}
+    },
+    "exclude": [
+        "bootstrap",
+        "public",
+        "storage"
+    ]
+}

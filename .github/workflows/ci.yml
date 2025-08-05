@@ -1,0 +1,176 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  COMPOSER_AUTH: '{"http-basic": {"aptive.repo.repman.io": {"username": "token", "password": "${{ secrets.COMPOSER_AUTH_TOKEN }}"}}}'
+  # TODO clean up and remove these by adding sensible defaults as shown here: https://aptive.atlassian.net/l/cp/10Sg59sJ
+  APP_ENV: local
+  APP_NAME: "ARO Service"
+  APP_KEY: base64:bXmX7oQNxhRWcDBZg1m3rxCAJhR0oFqvkUH8Gt9PozI=
+  APP_DEBUG: 0
+  APP_URL: http://localhost
+  VROOM_URL: http://localhost:3000
+  PESTROUTES_URL: "https://demoawsaptivepest.pestroutes.com/api/"
+  LOG_CHANNEL: stack
+  DYNAMO_DB_OFFICE_CREDENTIALS_TABLENAME: credentials_table_name
+  API_KEY: someAPiKey12345
+  WEBHOOKS_API_KEY: someWebHookAPiKey12345
+  QUEUE_CONNECTION: sync
+  SQS_PREFIX: "someQueuePrefix"
+  SQS_ROUTE_OPTIMIZATION_QUEUE: "routeOptimizationQueue"
+  COLLECT_METRICS_QUEUE: "collect-metrics"
+  DB_CONNECTION: pgsql
+  DB_HOST: "127.0.0.1"
+  DB_PORT: "5432"
+  DB_DATABASE: aro
+  DB_USERNAME: admin
+  DB_PASSWORD: password
+  INFLUXDB_HOST: http://aro-influxdb:8086
+  INFLUXDB_ORGANIZATION: "Application Metrics"
+  INFLUXDB_BUCKET: aro_service
+  INFLUXDB_TOKEN: someToken12345
+  CONFIGCAT_SDK_KEY: someSdkKey1234
+  SLACK_RELEASE_NOTIFICATION_URI: "someUri"
+  NOTIFICATION_SERVICE_SLACK_WEBHOOK_URL: https://hooks.slack.com/services/A/B
+  NOTIFICATION_SERVICE_API_URL: https://mvz2mj9ny0.execute-api.us-east-1.amazonaws.com/dev/api/v1/send-message
+  NOTIFICATION_SERVICE_API_BEARER_TOKEN: someBearerToken
+  OPTIMIZATION_FAILURE_RECIPIENTS: 80132567,806783937
+  MOTIVE_API_KEY: someMotiveApiKey
+  OPEN_WEATHER_MAP_API_KEY: someOpenWeatherMapApiKey
+
+jobs:
+  add-assignee:
+    name: Add Assignee
+    if: ${{ github.event_name == 'pull_request' }}
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: toshimaru/auto-author-assign@v2.1.0
+
+  test:
+    name: Test (PHP 8.3)
+    permissions:
+      pull-requests: write
+      contents: read
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:14-3.3-alpine
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_DB: aro
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
+      influx:
+        image: influxdb:2.6-alpine
+        env:
+          DOCKER_INFLUXDB_INIT_USERNAME: admin
+          DOCKER_INFLUXDB_INIT_PASSWORD: password
+          DOCKER_INFLUXDB_INIT_ORG: "Application Metrics"
+          DOCKER_INFLUXDB_INIT_BUCKET: aro_service
+          DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: someToken12345
+          DOCKER_INFLUXDB_INIT_MODE: setup
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.WORKFLOW_GITHUB_TOKEN }}
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: phpunit-bridge
+          extensions: pdo, pdo_pgsql, pdo_mysql, pcntl, intl, zip, bcmath, pcov, grpc
+          coverage: pcov
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Validate composer
+        run: composer validate
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction --optimize-autoloader
+
+      - name: Apply DB Migrations
+        run: php artisan db:apply --database pgsql --file db-schema-crm/bytebase/stage.aptive__LATEST.sql --disable-foreign-key-checks --ignore-extension-statements --ignore-existing-schema
+
+      - name: Run test suite
+        run: php artisan test --testsuite Unit,Integration --coverage-cobertura=coverage.cobertura.xml
+
+      - name: Code Coverage Summary Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: ./**/coverage.cobertura.xml
+          badge: true
+          format: markdown
+          output: both
+
+      - name: Add Code Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        if: github.event_name == 'pull_request'
+        with:
+          recreate: true
+          path: code-coverage-results.md
+          header: 'Code Coverage Summary'
+
+      - name: Hide Code Coverage PR Comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: 'Code Coverage Summary'
+          hide: true
+          hide_classify: "OFF_TOPIC"
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: code-coverage-results.md
+
+  validate-api-docs:
+    name: Validate API Documentation
+    uses: aptive-env/devops/.github/workflows/redoc.yml@main
+    secrets: inherit
+    permissions:
+      contents: write
+    with:
+      path: ./.documentation/api/v1.0.yaml
+      validate: true
+      update: false
+
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: php-actions/composer@v6
+
+      - name: PHPStan Static Analysis
+        uses: php-actions/phpstan@v3
+
+  phplint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: "laravel-pint"
+        uses: aglipanci/laravel-pint-action@2.4
+        with:
+          testMode: true
+

@@ -1,0 +1,77 @@
+name: pulumi-ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read  # This is required for actions/checkout
+
+jobs:
+
+  vars:
+    runs-on: ubuntu-latest
+    outputs:
+      repository: ${{ steps.build.outputs.repository }}
+      repository_name: ${{ steps.repository.outputs.name }}
+      sha_short: ${{ steps.sha.outputs.short }}
+    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Set repository vars
+        id: repository
+        run: echo "name=${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}" >> "$GITHUB_OUTPUT"
+      -
+        name: Set build vars
+        id: build
+        run: echo "repository=aptive/crm" >> "$GITHUB_OUTPUT"
+      -
+        name: Set sha vars
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+  preview:
+    needs: [ vars ]
+    name: Preview
+    runs-on: ubuntu-latest
+    defaults:
+        run:
+          working-directory: ./pulumi
+    steps:
+      - uses: actions/checkout@v4
+      -
+        name: Install pulumi
+        uses: pulumi/actions@v5
+      -
+        name: Setup Node LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: ./pulumi
+      -
+        name: Install dependencies
+        run: npm install
+      -
+        name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.PULUMI_AWS_ROLE }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+      -
+        name: Setup kubectl
+        run: |
+          mkdir ${HOME}/.kube
+          echo ${{ secrets.KUBE_CONFIG }} | base64 -d > ${HOME}/.kube/config
+      -
+        name: Preview
+        env:
+           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+           IMAGE_TAG: staging-${{ needs.vars.outputs.sha_short }}
+        run: |
+          pulumi stack select aptive/aro-api/${{ vars.PULUMI_STACK }}
+          pulumi config rm aws:profile
+          pulumi preview

@@ -1,0 +1,34 @@
+name: Post Technical KPIs for Release
+
+on:
+  workflow_call:
+    inputs:
+      github-release-tag:
+        description: 'The tag of the release'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      github-release-tag:
+        description: 'The tag of the release'
+        required: true
+        type: string
+
+jobs:
+  post-technical-kpis:
+    runs-on: ubuntu-latest
+    environment: technical-kpis # Use a GitHub environment to introduce a delay on the job. Currently the delay is set to 5 mins but once testing is complete we can up the delay to a few hours to get more metrics in our KPIs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Post Technical KPIs
+        uses: aptive-env/action-post-technical-kpis@v0 # <-- Make sure to use the correct version according to your needs
+        with:
+          slack-channel: aro_team # <-- The name of the slack channel where your github releases are posted that the action should post technical kpis on. Requires the slack bot "Datadog Technical KPIs" to be a member of that channel.
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          github-repository: aro-service-api
+          github-release-tag: ${{ inputs.github-release-tag }}
+          datadog-api-key: ${{ secrets.DATADOG_API_KEY }}
+          datadog-app-key: ${{ secrets.DATADOG_APP_KEY }}
+          datadog-service: aro

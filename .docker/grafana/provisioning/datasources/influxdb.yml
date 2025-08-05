@@ -1,0 +1,19 @@
+# # config file version
+apiVersion: 1
+
+# list of datasources to insert/update depending
+# on what's available in the database
+datasources:
+- name: InfluxDB
+  type: influxdb
+  access: proxy
+  url: http://aro-influxdb:8086
+  database: aro_service
+  # <bool> enable/disable basic auth
+  basicAuth: false
+  # <string> basic auth username
+  basicAuthUser: false
+  # <bool> enable/disable with credentials headers
+  withCredentials: false
+  # <bool> allow users to edit datasources from the UI.
+  editable: true
