@@ -1,4 +1,4 @@
-FROM public.ecr.aws/docker/library/php:8.3-fpm as base
+FROM public.ecr.aws/docker/library/php:8.4-fpm as base
 
 RUN apt-get update && apt-get install -y \
     # Needed for php zip extension
