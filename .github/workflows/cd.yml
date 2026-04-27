@@ -111,7 +111,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_OPS_ECR_ROLE }}
           aws-region: ${{ env.AWS_DEFAULT_REGION }}
@@ -158,7 +158,7 @@ jobs:
         run: npm install
       -
         name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.PULUMI_AWS_ROLE }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
